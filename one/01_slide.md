@@ -100,7 +100,6 @@
     >> d = SlowDuck.new
      => #<Celluloid::ActorProxy(Duck:0x5458)>
     >> q = d.future.quack
-    ...
     >> q.value # Blocking call
      => "Quaaaaaack!"
 
@@ -115,6 +114,10 @@
       end
     end
 
+!SLIDE
+## Links (cont.) ##
+
+    @@@ruby
     class ParentDuck
       include Celluloid
       def initialize
@@ -146,11 +149,12 @@
     end
 
     >> Farmyard.run!
-    >> f = (0..8).to_a.map { |n| Celluloid::Actor[:duck_family].future.quack }
+    >> f = (0..7).to_a.map { |n|
+      Celluloid::Actor[:duck_family].future.quack }
     >> f.map(&:value)
      => ["Quaaaaaack!", "Quaaaaaack!", "Quaaaaaack!",
          "Quaaaaaack!", "Quaaaaaack!", "Quaaaaaack!",
-         "Quaaaaaack!", "Quaaaaaack!", "Quaaaaaack!"]
+         "Quaaaaaack!", "Quaaaaaack!"]
 
 !SLIDE
 ## Execution modes ##
@@ -171,7 +175,7 @@
   be expensive.
 
 !SLIDE
-## Celluloid::IO (cont.) ##
+## Evented actor ##
 
     @@@ruby
     class DuckServer
@@ -187,6 +191,10 @@
         @server.close if @server
       end
 
+!SLIDE
+## Evented actor (cont.) ##
+
+      @@@ruby
       def run
         loop { async.handle_connection @server.accept }
       end
@@ -202,7 +210,7 @@
     end
 
 !SLIDE
-## Celluloid::IO (cont.) ##
+## Evented actor (cont.) ##
 
     @@@ruby
     >> s = DuckServer.new
