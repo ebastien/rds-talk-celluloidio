@@ -1,5 +1,5 @@
 !SLIDE title
-# Celluloid::IO<br/>Object Oriented & Evented I/O in Ruby #
+# Celluloid & Co<br/>Object Oriented Concurrency in Ruby #
 <div class="title_desc">
   <ul>
     <li><a href="http://twitter.com/ebastien">Emmanuel Bastien</a></li>
@@ -105,7 +105,52 @@
      => "Quaaaaaack!"
 
 !SLIDE
-## Links & Supervisors ##
+## Links ##
+
+    @@@ruby
+    class Duckling
+      include Celluloid
+      def quack
+        raise RuntimeError, "Oops!"
+      end
+    end
+
+    class ParentDuck
+      include Celluloid
+      def initialize
+        @baby = Duckling.new_link
+      end
+
+      def quack
+        @baby.async.quack
+      end
+    end
+
+!SLIDE
+## Links (cont.) ##
+
+    @@@ruby
+    >> p = ParentDuck.new
+    >> p.quack
+      ...
+      E, [...] ERROR -- : Duckling crashed!
+      ...
+      E, [...] ERROR -- : ParentDuck crashed!
+
+!SLIDE
+## Supervisors ##
+
+    @@@ruby
+    class Farmyard < Celluloid::SupervisionGroup
+      pool SlowDuck, as: :duck_family, size: 5
+    end
+
+    >> Farmyard.run!
+    >> f = (0..8).to_a.map { |n| Celluloid::Actor[:duck_family].future.quack }
+    >> f.map(&:value)
+     => ["Quaaaaaack!", "Quaaaaaack!", "Quaaaaaack!",
+         "Quaaaaaack!", "Quaaaaaack!", "Quaaaaaack!",
+         "Quaaaaaack!", "Quaaaaaack!", "Quaaaaaack!"]
 
 !SLIDE
 ## Execution modes ##
@@ -116,7 +161,7 @@
 !SLIDE
 ## DCell ##
 * Celluloid + ZeroMQ
-* Erlang OTP in Ruby 
+* You basically get Erlang OTP in Ruby
 
 !SLIDE
 ## Celluloid::IO ##
@@ -126,4 +171,48 @@
   be expensive.
 
 !SLIDE
+## Celluloid::IO (cont.) ##
+
+    @@@ruby
+    class DuckServer
+      include Celluloid::IO
+      finalizer :shutdown
+
+      def initialize
+        @server = TCPServer.new('localhost', 3000)
+        async.run
+      end
+
+      def shutdown
+        @server.close if @server
+      end
+
+      def run
+        loop { async.handle_connection @server.accept }
+      end
+
+      def handle_connection(socket)
+        loop do
+          socket.readpartial(4096)
+          socket.puts "Quaaaaaack!"
+        end
+      rescue EOFError
+        socket.close
+      end
+    end
+
+!SLIDE
+## Celluloid::IO (cont.) ##
+
+    @@@ruby
+    >> s = DuckServer.new
+
+!SLIDE
 ## References ##
+* [Celluloid](https://github.com/celluloid/celluloid)
+* [DCell](https://github.com/celluloid/dcell)
+* [Celluloid::ZMQ](https://github.com/celluloid/celluloid-zmq)
+* [Celluloid::IO](https://github.com/celluloid/celluloid-io)
+* [Erlang](http://www.erlang.org)
+* [Akka](http://akka.io/)
+* [ATOM](http://python.org/workshops/1997-10/proceedings/atom/)

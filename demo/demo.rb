@@ -1,4 +1,5 @@
 require 'celluloid'
+require 'celluloid/io'
 
 class Duck
   include Celluloid
@@ -15,10 +16,51 @@ class SlowDuck
   end
 end
 
-class Solver
+class Farmyard < Celluloid::SupervisionGroup
+  pool SlowDuck, as: :duck_family, size: 5
+end
+
+class Duckling
   include Celluloid
-  def compute(n)
-    sleep 10
-    n + 1
+  def quack
+    raise RuntimeError, "Oops!"
+  end
+end
+
+class ParentDuck
+  include Celluloid
+  def initialize
+    @baby = Duckling.new_link
+  end
+
+  def quack
+    @baby.async.quack
+  end
+end
+
+class DuckServer
+  include Celluloid::IO
+  finalizer :shutdown
+
+  def initialize
+    @server = TCPServer.new('localhost', 3000)
+    async.run
+  end
+
+  def shutdown
+    @server.close if @server
+  end
+
+  def run
+    loop { async.handle_connection @server.accept }
+  end
+
+  def handle_connection(socket)
+    loop do
+      socket.readpartial(4096)
+      socket.puts "Quaaaaaack!"
+    end
+  rescue EOFError
+    socket.close
   end
 end
